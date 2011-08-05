@@ -195,16 +195,27 @@ def main():
     parser.add_option("-p", "--password")
     (options, args) = parser.parse_args()
     
-    if options.username and not options.password:
-        print "If you specify a username, you must also specify a password"
-        exit()
-        
     print "Loading..."
     
     body = MainWindow()
     if options.username:
+        if not options.password:
+            # Try getting password from KDE wallet.
+            from getpass import getpass
+            try:
+                import keyring
+                keyring.set_keyring(keyring.backend.KDEKWallet())
+                password = keyring.get_password("reddit-cli", options.username)
+                # Fall back to getpass and store result.
+                if password is None:
+                    password = getpass("Your reddit password:")
+                    keyring.set_password("reddit-cli", options.username, 
+                        password)
+            except (NameError, AttributeError, ImportError):
+                password = getpass("Your reddit password:")
+
         print "[Logging in]"
-        if body.login(options.username, options.password):
+        if body.login(options.username, password):
             print "[Login Successful]"
         else:
             print "[Login Failed]"
